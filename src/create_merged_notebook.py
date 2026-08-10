@@ -849,7 +849,8 @@ for scenario in scenarios:
     feature_row = pd.Series(scenario['features'])
     result = engine.calculate_risk(scenario['ml_prob'], feature_row, scenario['tx'])
     
-    print(f"\nScenario: {scenario['name']}")
+    print()
+    print(f"Scenario: {scenario['name']}")
     print(f"  Amount: {scenario['tx']['amount']:,.2f} INR")
     print(f"  Risk Score: {result['risk_score']} / 100")
     print(f"  Risk Tier: {result['risk_tier']}")

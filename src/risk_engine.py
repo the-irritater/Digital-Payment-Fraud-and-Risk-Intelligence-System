@@ -51,7 +51,11 @@ class RiskEngine:
             check_is_fitted(self.iso_forest)
         except Exception:
             return 0.20
-        df_row = pd.DataFrame([feature_row.fillna(0)])
+        if hasattr(self.iso_forest, "feature_names_in_"):
+            full_row = {col: float(feature_row.get(col, 0.0)) for col in self.iso_forest.feature_names_in_}
+            df_row = pd.DataFrame([full_row])
+        else:
+            df_row = pd.DataFrame([feature_row.fillna(0)])
         raw_score = self.iso_forest.decision_function(df_row)[0]
         # Invert & scale: lower decision_function → more anomalous → higher score
         norm_score = float(np.clip(1.0 - (raw_score + 0.5), 0.0, 1.0))
