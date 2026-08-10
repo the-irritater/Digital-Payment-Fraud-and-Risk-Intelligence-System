@@ -1,0 +1,5 @@
+model,threshold,precision,recall,f1_score,roc_auc,pr_auc,true_positives,false_positives,true_negatives,false_negatives,missed_fraud_loss_inr,investigation_cost_inr,total_financial_loss_inr
+Logistic_Regression,0.5,0.1847,0.8962,0.3063,0.983,0.7957,164,724,10570,19,4203023.53,144800.0,4347823.53
+Random_Forest,0.5,0.4181,0.9071,0.5724,0.994,0.8693,166,231,11063,17,3395973.25,46200.0,3442173.25
+XGBoost_Default_0.5,0.5,0.3125,0.9946,0.4756,0.9962,0.9462,185,407,4958,1,399045.08,81400.0,480445.08
+XGBoost_Optimal_Financial,0.16,0.2703,1.0,0.4256,0.9962,0.9462,186,502,4863,0,0.0,100400.0,100400.0

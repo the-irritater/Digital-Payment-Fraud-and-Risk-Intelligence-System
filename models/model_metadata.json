@@ -1,0 +1,131 @@
+{
+    "feature_cols": [
+        "log_amount",
+        "hour_of_day",
+        "day_of_week",
+        "is_night_time",
+        "type_TRANSFER",
+        "type_CASH_OUT",
+        "type_PAYMENT",
+        "type_CASH_IN",
+        "type_DEBIT",
+        "is_orig_customer",
+        "is_dest_customer",
+        "is_dest_merchant",
+        "orig_balance_err",
+        "dest_balance_err",
+        "is_zero_orig_balance",
+        "is_zero_dest_balance",
+        "amount_to_orig_prior_mean_ratio",
+        "transactions_last_1h",
+        "transactions_last_6h",
+        "transactions_last_24h",
+        "is_new_beneficiary",
+        "amount_velocity_6h"
+    ],
+    "best_params": {
+        "n_estimators": 129,
+        "max_depth": 4,
+        "learning_rate": 0.014547667342557566,
+        "subsample": 0.8843301775707109,
+        "colsample_bytree": 0.8441059418141699,
+        "min_child_weight": 3,
+        "gamma": 3.391695431794358,
+        "scale_pos_weight": 464.3365735115431,
+        "random_state": 42,
+        "n_jobs": -1,
+        "eval_metric": "aucpr"
+    },
+    "optimal_threshold": 0.16,
+    "test_metrics": {
+        "threshold": 0.16,
+        "precision": 0.2703,
+        "recall": 1.0,
+        "f1_score": 0.4256,
+        "roc_auc": 0.9962,
+        "pr_auc": 0.9462,
+        "true_positives": 186,
+        "false_positives": 502,
+        "true_negatives": 4863,
+        "false_negatives": 0,
+        "missed_fraud_loss_inr": 0.0,
+        "investigation_cost_inr": 100400.0,
+        "total_financial_loss_inr": 100400.0
+    },
+    "baseline_comparison": {
+        "Logistic_Regression": {
+            "threshold": 0.5,
+            "precision": 0.1847,
+            "recall": 0.8962,
+            "f1_score": 0.3063,
+            "roc_auc": 0.983,
+            "pr_auc": 0.7957,
+            "true_positives": 164,
+            "false_positives": 724,
+            "true_negatives": 10570,
+            "false_negatives": 19,
+            "missed_fraud_loss_inr": 4203023.53,
+            "investigation_cost_inr": 144800.0,
+            "total_financial_loss_inr": 4347823.53
+        },
+        "Random_Forest": {
+            "threshold": 0.5,
+            "precision": 0.4181,
+            "recall": 0.9071,
+            "f1_score": 0.5724,
+            "roc_auc": 0.994,
+            "pr_auc": 0.8693,
+            "true_positives": 166,
+            "false_positives": 231,
+            "true_negatives": 11063,
+            "false_negatives": 17,
+            "missed_fraud_loss_inr": 3395973.25,
+            "investigation_cost_inr": 46200.0,
+            "total_financial_loss_inr": 3442173.25
+        },
+        "XGBoost_Default_0.5": {
+            "threshold": 0.5,
+            "precision": 0.3125,
+            "recall": 0.9946,
+            "f1_score": 0.4756,
+            "roc_auc": 0.9962,
+            "pr_auc": 0.9462,
+            "true_positives": 185,
+            "false_positives": 407,
+            "true_negatives": 4958,
+            "false_negatives": 1,
+            "missed_fraud_loss_inr": 399045.08,
+            "investigation_cost_inr": 81400.0,
+            "total_financial_loss_inr": 480445.08
+        },
+        "XGBoost_Optimal_Financial": {
+            "threshold": 0.16,
+            "precision": 0.2703,
+            "recall": 1.0,
+            "f1_score": 0.4256,
+            "roc_auc": 0.9962,
+            "pr_auc": 0.9462,
+            "true_positives": 186,
+            "false_positives": 502,
+            "true_negatives": 4863,
+            "false_negatives": 0,
+            "missed_fraud_loss_inr": 0.0,
+            "investigation_cost_inr": 100400.0,
+            "total_financial_loss_inr": 100400.0
+        }
+    },
+    "cost_model": {
+        "description": "Financial loss = sum(actual_amount of each missed fraud tx) + (FP_count * investigation_cost_per_fp)",
+        "investigation_cost_per_fp_inr": 200.0,
+        "fn_cost_method": "actual_transaction_amount"
+    },
+    "data_provenance": {
+        "training_data": "PaySim synthetic mobile-money simulation (Kaggle)",
+        "split_method": "Strict temporal split on step column (70/15/15)",
+        "filtered_types": [
+            "TRANSFER",
+            "CASH_OUT"
+        ],
+        "sample_size": 400000
+    }
+}

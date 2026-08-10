@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest
+.pytest_cache/
+
+# Large raw PaySim CSV dataset (>100MB limit for GitHub)
+data/PS_*.csv
+data/*.csv
+!data/processed/synthetic_upi_transactions.csv
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Virtual environment
+venv/
+env/
+.venv/
