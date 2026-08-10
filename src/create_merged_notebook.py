@@ -98,23 +98,20 @@ This distinction is clearly documented throughout the project.
 This section verifies that all required Python packages are installed. If any package (such as Optuna or SHAP) is missing in your notebook environment, it will be automatically installed.
 """),
 
-        code("""import sys
+        code("""# Automated dependency installer for Jupyter / Google Colab / VS Code environments
+import sys
 import subprocess
 
-required_packages = ['optuna', 'shap', 'xgboost', 'networkx', 'plotly', 'streamlit', 'scikit-learn', 'pandas', 'numpy']
-missing = []
-for pkg in required_packages:
-    try:
-        __import__(pkg)
-    except ImportError:
-        missing.append(pkg)
-
-if missing:
-    print(f"Installing missing required packages: {missing}...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install"] + missing)
-    print("All required packages installed successfully.")
-else:
-    print("All required packages are already installed.")
+try:
+    import optuna
+    import shap
+    import xgboost
+    import networkx
+    print("All core dependencies (optuna, shap, xgboost, networkx) are verified.")
+except ImportError:
+    print("Installing missing dependencies...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "optuna", "shap", "xgboost", "networkx", "plotly", "streamlit"])
+    print("Dependencies installed successfully.")
 """),
 
         # ===================== SECTION 2: DATA LOADING =====================
@@ -476,14 +473,20 @@ XGBoost is a gradient-boosted decision tree algorithm that has consistently perf
 - Our objective function maximizes PR-AUC, not accuracy
 """),
 
-        code("""import xgboost as xgb
+        code("""import sys
+import subprocess
+
 try:
     import optuna
 except ImportError:
-    import sys, subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "optuna"])
+    print("Optuna module not found. Installing optuna package...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "optuna"])
+    import site
+    from importlib import reload
+    reload(site)
     import optuna
 
+import xgboost as xgb
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 scale_pos_weight = (len(y_train) - y_train.sum()) / max(y_train.sum(), 1)
