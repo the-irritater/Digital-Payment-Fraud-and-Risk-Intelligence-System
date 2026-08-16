@@ -1,0 +1,82 @@
+{
+    "total_records": 6362620,
+    "total_fraud": 8213,
+    "fraud_rate_pct": 0.1291,
+    "fraud_by_type": [
+        {
+            "type": "CASH_IN",
+            "total_transactions": 1399284,
+            "fraud_count": 0,
+            "fraud_rate": 0.0,
+            "fraud_rate_pct": 0.0
+        },
+        {
+            "type": "CASH_OUT",
+            "total_transactions": 2237500,
+            "fraud_count": 4116,
+            "fraud_rate": 0.0018395530726256983,
+            "fraud_rate_pct": 0.18395530726256984
+        },
+        {
+            "type": "DEBIT",
+            "total_transactions": 41432,
+            "fraud_count": 0,
+            "fraud_rate": 0.0,
+            "fraud_rate_pct": 0.0
+        },
+        {
+            "type": "PAYMENT",
+            "total_transactions": 2151495,
+            "fraud_count": 0,
+            "fraud_rate": 0.0,
+            "fraud_rate_pct": 0.0
+        },
+        {
+            "type": "TRANSFER",
+            "total_transactions": 532909,
+            "fraud_count": 4097,
+            "fraud_rate": 0.007687991758442811,
+            "fraud_rate_pct": 0.7687991758442811
+        }
+    ],
+    "null_counts": {
+        "step": 0,
+        "type": 0,
+        "amount": 0,
+        "nameOrig": 0,
+        "oldbalanceOrg": 0,
+        "newbalanceOrig": 0,
+        "nameDest": 0,
+        "oldbalanceDest": 0,
+        "newbalanceDest": 0,
+        "isFraud": 0,
+        "isFlaggedFraud": 0
+    },
+    "step_range": [
+        1,
+        743
+    ],
+    "filtered_types": [
+        "TRANSFER",
+        "CASH_OUT"
+    ],
+    "filtered_records": 400000,
+    "splits": {
+        "train": {
+            "records": 382972,
+            "fraud": 823,
+            "fraud_rate_pct": 0.2149
+        },
+        "validation": {
+            "records": 11477,
+            "fraud": 183,
+            "fraud_rate_pct": 1.5945
+        },
+        "test": {
+            "records": 5551,
+            "fraud": 186,
+            "fraud_rate_pct": 3.3507
+        }
+    },
+    "generated_at": "2026-08-16T19:09:51.975587+00:00"
+}

@@ -1,5 +1,5 @@
-model,threshold,precision,recall,f1_score,roc_auc,pr_auc,true_positives,false_positives,true_negatives,false_negatives,missed_fraud_loss_inr,investigation_cost_inr,total_financial_loss_inr
-Logistic_Regression,0.5,0.1847,0.8962,0.3063,0.983,0.7957,164,724,10570,19,4203023.53,144800.0,4347823.53
-Random_Forest,0.5,0.4181,0.9071,0.5724,0.994,0.8693,166,231,11063,17,3395973.25,46200.0,3442173.25
-XGBoost_Default_0.5,0.5,0.3125,0.9946,0.4756,0.9962,0.9462,185,407,4958,1,399045.08,81400.0,480445.08
-XGBoost_Optimal_Financial,0.16,0.2703,1.0,0.4256,0.9962,0.9462,186,502,4863,0,0.0,100400.0,100400.0
+model,threshold,precision,recall,f1_score,roc_auc,pr_auc,brier_score,expected_calibration_error,true_positives,false_positives,true_negatives,false_negatives,missed_fraud_loss_inr,investigation_cost_inr,total_financial_loss_inr,review_rate,fraud_capture_rate,blocked_fraud_value_inr
+Logistic_Regression,0.5,0.1849,0.8962,0.3065,0.9822,0.7959,0.048892,0.109481,164,723,10571,19,4203023.53,144600.0,4347623.53,0.0773,0.8962,233241368.67
+Random_Forest,0.5,0.4397,0.8962,0.5899,0.9939,0.8713,0.015465,0.038271,164,209,11085,19,3600524.8,41800.0,3642324.8,0.0325,0.8962,233843867.4
+XGBoost_Calibrated_Locked_Threshold,0.01,0.4876,0.9516,0.6448,0.9962,0.9471,0.006747,0.009092,177,186,5179,9,789435.41,37200.0,826635.41,0.0654,0.9516,345338323.18
+XGBoost_Default_0.5,0.5,0.9061,0.8817,0.8937,0.9962,0.9471,0.006747,0.009092,164,17,5348,22,22228426.87,3400.0,22231826.87,0.0326,0.8817,323899331.72
