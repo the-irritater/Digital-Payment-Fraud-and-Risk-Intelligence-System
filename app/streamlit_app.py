@@ -1,5 +1,5 @@
 """
-Streamlit Application: Real-Time Digital Payment Fraud Detection and Risk Intelligence Platform
+Streamlit Application: Digital Payment Fraud Detection and Risk Intelligence Platform
 Author: Sanman Kadam
 """
 
@@ -12,13 +12,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-# Add src to Python path
+# Add src and sql to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "sql")))
 
 from predict import FraudPredictor
 from risk_engine import RiskEngine
 from synthetic_upi import generate_synthetic_upi_dataset
 from graph_fraud import FraudGraphAnalyzer
+from db_manager import get_db_manager
 
 st.set_page_config(
     page_title="Digital Payment Fraud Intelligence Platform",
@@ -32,25 +34,57 @@ if os.path.exists(css_path):
     with open(css_path, "r") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Cache predictor and risk engine initialization
+# Cache predictor, risk engine, and metadata
 @st.cache_resource
 def get_services():
     predictor = FraudPredictor()
     risk_engine = RiskEngine()
-    return predictor, risk_engine
+    db_mgr = get_db_manager()
+    
+    meta_path = os.path.join(os.path.dirname(__file__), "..", "models", "model_metadata.json")
+    meta = {}
+    if os.path.exists(meta_path):
+        with open(meta_path, 'r') as f:
+            meta = json.load(f)
+            
+    threshold_csv = os.path.join(os.path.dirname(__file__), "..", "reports", "threshold_cost_table.csv")
+    df_thresh = pd.read_csv(threshold_csv) if os.path.exists(threshold_csv) else pd.DataFrame()
+    
+    # Load dataset summary if available
+    summary_path = os.path.join(os.path.dirname(__file__), "..", "reports", "dataset_summary.json")
+    dataset_summary = {}
+    if os.path.exists(summary_path):
+        with open(summary_path, 'r') as f:
+            dataset_summary = json.load(f)
+    
+    return predictor, risk_engine, db_mgr, meta, df_thresh, dataset_summary
 
-predictor, risk_engine = get_services()
+predictor, risk_engine, db_mgr, meta, df_thresh, dataset_summary = get_services()
+
+# Extract dynamic metadata from single source of truth
+opt_thresh = meta.get("optimal_threshold", 0.5)
+test_metrics = meta.get("test_metrics", {})
+pr_auc_val = test_metrics.get("pr_auc", 0.0)
+roc_auc_val = test_metrics.get("roc_auc", 0.0)
+recall_val = test_metrics.get("recall", 0.0)
+precision_val = test_metrics.get("precision", 0.0)
+loss_val = test_metrics.get("total_financial_loss_inr", 0.0)
+brier_val = test_metrics.get("brier_score", 0.0)
+ece_val = test_metrics.get("expected_calibration_error", 0.0)
+review_rate_val = test_metrics.get("review_rate", 0.0)
+fraud_capture_val = test_metrics.get("fraud_capture_rate", 0.0)
+blocked_value_val = test_metrics.get("blocked_fraud_value_inr", 0.0)
 
 # Sidebar Navigation
 st.sidebar.title("Fraud Intelligence")
-st.sidebar.caption("Enterprise Payment Risk Engine v2.4")
+st.sidebar.caption("Fraud Risk Intelligence Prototype v3.0")
 st.sidebar.markdown("**Author**: Sanman Kadam")
 
 nav_option = st.sidebar.radio(
     "Navigation",
     [
-        "Executive Overview and RBI Context",
-        "Live Transaction Checker",
+        "Executive Overview",
+        "Transaction Risk Checker",
         "Fraud Investigation Queue",
         "Model and Risk Analytics",
         "Synthetic UPI and Graph Analytics"
@@ -58,97 +92,113 @@ nav_option = st.sidebar.radio(
 )
 
 st.sidebar.subheader("System Status")
-st.sidebar.success("XGBoost Model: ACTIVE")
-st.sidebar.info("Risk Engine: ONLINE")
-st.sidebar.caption("Cost-Optimized Threshold: 0.17 (high recall operating point)")
-st.sidebar.caption("PR-AUC Score: 0.9515")
+st.sidebar.success("XGBoost Model: ACTIVE (Calibrated)")
+if risk_engine.is_anomaly_active:
+    st.sidebar.success("Isolation Forest: ACTIVE (Fitted)")
+else:
+    st.sidebar.warning("Isolation Forest: INACTIVE (Unfitted baseline)")
+st.sidebar.info(f"Risk Engine: ONLINE ({risk_engine.w_ml:.0%} ML / {risk_engine.w_anomaly:.0%} Anomaly / {risk_engine.w_rules:.0%} Rules)")
+st.sidebar.caption(f"Locked Threshold: **{opt_thresh:.4f}** (Validation Locked)")
+st.sidebar.caption(f"Test PR-AUC Score: **{pr_auc_val:.4f}**")
 
-# TAB 1: EXECUTIVE OVERVIEW AND RBI CONTEXT
-if nav_option == "Executive Overview and RBI Context":
-    st.title("Executive Fraud Risk and RBI Intelligence Overview")
-    st.markdown("Macroeconomic digital payment indicators, transaction volume trends, and fraud loss metrics.")
+# TAB 1: EXECUTIVE OVERVIEW
+if nav_option == "Executive Overview":
+    st.title("Executive Fraud Risk Intelligence Overview")
+    st.markdown("Model performance metrics, dataset provenance, and financial loss indicators — all loaded from pipeline artifacts.")
 
-    # Top KPI Row
+    # Top KPI Row (Dynamically Populated from model_metadata.json)
     col1, col2, col3, col4 = st.columns(4)
+    
+    # Dataset volume from dataset_summary.json or metadata
+    total_records = dataset_summary.get("total_records", meta.get("data_provenance", {}).get("sample_size", "N/A"))
+    total_fraud = dataset_summary.get("total_fraud", "N/A")
+    
     with col1:
-        st.markdown("""
+        display_vol = f"{total_records:,}" if isinstance(total_records, int) else str(total_records)
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Total Processed Volume</div>
-            <div class="metric-value">6.36 M</div>
-            <span style="color:#22c55e;">PaySim Financial Logs</span>
+            <div class="metric-title">Processed Dataset Volume</div>
+            <div class="metric-value">{display_vol}</div>
+            <span style="color:#22c55e;">PaySim Financial Simulation</span>
         </div>
         """, unsafe_allow_html=True)
     with col2:
-        st.markdown("""
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Detected Fraud Rate</div>
-            <div class="metric-value">0.129 %</div>
-            <span style="color:#ef4444;">8,213 Fraud Txs</span>
+            <div class="metric-title">Test Fraud Recall</div>
+            <div class="metric-value">{recall_val*100:.1f} %</div>
+            <span style="color:#ef4444;">@ Locked Threshold {opt_thresh:.2f}</span>
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        st.markdown("""
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Model PR-AUC Score</div>
-            <div class="metric-value">0.9515</div>
-            <span style="color:#6366f1;">Optuna Tuned XGBoost</span>
+            <div class="metric-title">Test PR-AUC Score</div>
+            <div class="metric-value">{pr_auc_val:.4f}</div>
+            <span style="color:#6366f1;">Calibrated Optuna XGBoost</span>
         </div>
         """, unsafe_allow_html=True)
     with col4:
-        st.markdown("""
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Cost Model</div>
-            <div class="metric-value">Actual Amt</div>
-            <span style="color:#94a3b8;">FN = missed tx amount</span>
+            <div class="metric-title">Expected Financial Loss</div>
+            <div class="metric-value">INR {loss_val:,.0f}</div>
+            <span style="color:#94a3b8;">Actual Missed Fraud Amounts + FP Cost</span>
         </div>
         """, unsafe_allow_html=True)
 
-    # Section 1: Transaction Type and Fraud Distribution
+    # Section 1: Transaction Type and Fraud Distribution (from dataset_summary.json)
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("Fraud Rate by Transaction Type")
-        df_types = pd.DataFrame([
-            {"Type": "TRANSFER", "Total": 532909, "Fraud": 4097, "Fraud_Rate": 0.7688},
-            {"Type": "CASH_OUT", "Total": 2237500, "Fraud": 4116, "Fraud_Rate": 0.1839},
-            {"Type": "PAYMENT", "Total": 2151495, "Fraud": 0, "Fraud_Rate": 0.0000},
-            {"Type": "CASH_IN", "Total": 1399284, "Fraud": 0, "Fraud_Rate": 0.0000},
-            {"Type": "DEBIT", "Total": 41432, "Fraud": 0, "Fraud_Rate": 0.0000}
-        ])
-        fig_type = px.bar(
-            df_types, x="Type", y="Fraud_Rate", text="Fraud",
-            color="Fraud_Rate", color_continuous_scale="Reds",
-            title="Fraud Rate (%) by Payment Rail Type"
-        )
-        fig_type.update_layout(template="plotly_dark", height=380)
-        st.plotly_chart(fig_type, use_container_width=True)
+        fraud_by_type = dataset_summary.get("fraud_by_type", [])
+        if fraud_by_type:
+            df_types = pd.DataFrame(fraud_by_type)
+            df_types.rename(columns={
+                "type": "Type", "total_transactions": "Total", 
+                "fraud_count": "Fraud", "fraud_rate_pct": "Fraud_Rate"
+            }, inplace=True)
+        else:
+            st.info("Run `python src/train.py` to generate dataset summary.")
+            df_types = pd.DataFrame(columns=["Type", "Total", "Fraud", "Fraud_Rate"])
+        
+        if not df_types.empty:
+            fig_type = px.bar(
+                df_types, x="Type", y="Fraud_Rate", text="Fraud",
+                color="Fraud_Rate", color_continuous_scale="Reds",
+                title="Fraud Rate (%) by Payment Rail Type"
+            )
+            fig_type.update_layout(template="plotly_dark", height=380)
+            st.plotly_chart(fig_type, use_container_width=True)
 
     with c2:
-        st.subheader("Hourly Nocturnal Fraud Pattern")
-        hours = list(range(24))
-        fraud_rates = [0.85, 0.92, 1.15, 1.20, 0.98, 0.75, 0.35, 0.20, 0.15, 0.12, 0.10, 0.09, 0.11, 0.10, 0.12, 0.14, 0.18, 0.22, 0.30, 0.40, 0.55, 0.65, 0.72, 0.80]
-        df_hourly = pd.DataFrame({"Hour": hours, "Fraud_Rate_Pct": fraud_rates})
-        fig_hour = px.line(
-            df_hourly, x="Hour", y="Fraud_Rate_Pct", markers=True,
-            title="Hourly Fraud Rate (%) Across 24-Hour Cycle",
-            color_discrete_sequence=["#ef4444"]
-        )
-        fig_hour.update_layout(template="plotly_dark", height=380)
-        st.plotly_chart(fig_hour, use_container_width=True)
+        st.subheader("Business KPIs at Operating Threshold")
+        kpi_data = pd.DataFrame([
+            {"KPI": "Fraud Capture Rate", "Value": f"{fraud_capture_val*100:.1f}%"},
+            {"KPI": "Review Rate", "Value": f"{review_rate_val*100:.1f}%"},
+            {"KPI": "Precision", "Value": f"{precision_val*100:.1f}%"},
+            {"KPI": "Blocked Fraud Value (INR)", "Value": f"₹{blocked_value_val:,.0f}"},
+            {"KPI": "Expected Financial Loss (INR)", "Value": f"₹{loss_val:,.0f}"},
+            {"KPI": "Brier Score (Calibration)", "Value": f"{brier_val:.6f}"},
+            {"KPI": "Expected Calibration Error", "Value": f"{ece_val:.6f}"},
+        ])
+        st.dataframe(kpi_data, use_container_width=True, hide_index=True)
 
-    # Section 2: RBI Macro Context Card
-    st.subheader("Reserve Bank of India (RBI) Payment Ecosystem Context")
+    # Section 2: Data Provenance Card
+    st.subheader("Data Provenance and Model Context")
     st.info("""
-    **RBI Payment Indicators and Fraud Registry Insights**:
-    * **UPI Ecosystem Scale**: NPCI processes hundreds of millions of daily UPI transactions. See RBI Payment System Indicators for current period-specific figures.
-    * **Reported vs Attempted**: RBI domestic fraud registry data captures retrospective bank-reported losses above reporting thresholds. Real-time payment switches require proactive model scoring to intercept frauds before settlement.
-    * **Primary Risk Vectors**: Social engineering phishing collect requests, synthetic KYC mule account rings, and midnight high-velocity drain transfers.
-    * **Data Provenance**: The transaction-level model is trained on PaySim synthetic data. RBI data provides ecosystem context only. The UPI simulation layer is explicitly synthetic.
+    **Data and Model Provenance**:
+    * **Training Data**: PaySim synthetic mobile-money simulation (Kaggle). This is explicitly synthetic data — not real banking transactions.
+    * **Transaction Scope**: Model trained on TRANSFER and CASH_OUT transaction types only, as PaySim fraud labels are concentrated in these categories.
+    * **Threshold Selection**: Operating threshold locked on Validation set. Test set used only for final one-time evaluation.
+    * **Calibration**: Probabilities calibrated via Platt scaling (sigmoid) on validation set.
+    * **Download Dataset**: Obtain `PS_20174392719_1491204439457_log.csv` from [Kaggle PaySim Dataset](https://www.kaggle.com/datasets/ealaxi/paysim1) and place in `data/`.
     """)
 
-# TAB 2: LIVE TRANSACTION CHECKER
-elif nav_option == "Live Transaction Checker":
-    st.title("Real-Time Transaction Risk Checker and Explainer")
-    st.markdown("Simulate single digital payment transactions and inspect immediate Risk Engine decisions with explainable signals.")
+# TAB 2: TRANSACTION RISK CHECKER
+elif nav_option == "Transaction Risk Checker":
+    st.title("Interactive Transaction Risk Checker")
+    st.markdown("Simulate single digital payment transactions with **stateful customer baselines** and inspect Risk Engine decisions.")
 
     # Preset Scenarios
     st.subheader("Quick Load Preset Scenarios")
@@ -165,15 +215,14 @@ elif nav_option == "Live Transaction Checker":
         if st.button("Preset 3: New Beneficiary Velocity Surge", use_container_width=True):
             scenario = "surge"
 
-    # Set default values based on selected scenario
     if scenario == "legit":
-        default_amt, default_type, default_hour, default_old_bal, default_new_ben, default_vel = 1250.0, "PAYMENT", 14, 15000.0, 0, 1
+        default_amt, default_type, default_hour, default_old_bal, default_orig, default_dest = 1250.0, "PAYMENT", 14, 15000.0, "C928310482", "M102938471"
     elif scenario == "critical":
-        default_amt, default_type, default_hour, default_old_bal, default_new_ben, default_vel = 84500.0, "TRANSFER", 2, 84500.0, 1, 6
+        default_amt, default_type, default_hour, default_old_bal, default_orig, default_dest = 84500.0, "TRANSFER", 2, 84500.0, "C928310482", "C938201941"
     elif scenario == "surge":
-        default_amt, default_type, default_hour, default_old_bal, default_new_ben, default_vel = 45000.0, "CASH_OUT", 1, 45000.0, 1, 8
+        default_amt, default_type, default_hour, default_old_bal, default_orig, default_dest = 45000.0, "CASH_OUT", 1, 45000.0, "C482019482", "C849201942"
     else:
-        default_amt, default_type, default_hour, default_old_bal, default_new_ben, default_vel = 25000.0, "TRANSFER", 3, 25000.0, 1, 4
+        default_amt, default_type, default_hour, default_old_bal, default_orig, default_dest = 25000.0, "TRANSFER", 3, 25000.0, "C928310482", "C102938471"
 
     with st.form("tx_input_form"):
         st.subheader("Transaction Input Parameters")
@@ -185,12 +234,9 @@ elif nav_option == "Live Transaction Checker":
         with c2:
             old_bal_org = st.number_input("Originator Balance Before Tx (INR)", min_value=0.0, value=default_old_bal)
             new_bal_org = st.number_input("Originator Balance After Tx (INR)", min_value=0.0, value=0.0 if default_old_bal == amount else max(default_old_bal - amount, 0.0))
-            is_new_ben = st.selectbox("Is Unverified New Beneficiary?", [1, 0], index=0 if default_new_ben == 1 else 1)
         with c3:
-            vel_1h = st.slider("Transactions in Last 1 Hour", 1, 15, value=default_vel)
-            vel_6h = st.slider("Transactions in Last 6 Hours", 1, 30, value=default_vel * 2)
-            name_orig = st.text_input("Originator Account ID", value="C928310482")
-            name_dest = st.text_input("Beneficiary Account ID", value="C102938471")
+            name_orig = st.text_input("Originator Account ID", value=default_orig)
+            name_dest = st.text_input("Beneficiary Account ID", value=default_dest)
 
         submit_btn = st.form_submit_button("Evaluate Transaction Risk", use_container_width=True)
 
@@ -207,14 +253,16 @@ elif nav_option == "Live Transaction Checker":
             'newbalanceDest': 0.0
         }
 
-        from feature_engineering import build_features, FEATURE_COLS
-        df_single = pd.DataFrame([tx_dict])
-        df_single['step_diff'] = 1
-        featured_df = build_features(df_single, is_training=False)
-        feature_row = featured_df[FEATURE_COLS].iloc[0]
+        # Stateful Single Prediction (computes genuine historical velocity via CustomerStateStore)
+        pred_res = predictor.predict_single(tx_dict, update_state=True)
+        ml_prob = pred_res['fraud_probability']
+        feature_row = pd.Series(pred_res['raw_features'])
 
-        ml_prob = float(predictor.predict_proba(featured_df)[0])
+        # Calculate Risk Engine score
         risk_result = risk_engine.calculate_risk(ml_prob, feature_row, tx_dict)
+
+        # Log evaluation to SQLite Database
+        db_mgr.log_evaluation(tx_dict, risk_result)
 
         st.markdown("### Risk Evaluation Results")
 
@@ -243,17 +291,22 @@ elif nav_option == "Live Transaction Checker":
         with res_c3:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-title">XGBoost ML Fraud Prob</div>
-                <div class="metric-value">{risk_result['components']['ml_probability']*100:.1f}%</div>
-                <span style="color:#94a3b8;">Threshold: {predictor.optimal_threshold}</span>
+                <div class="metric-title">Calibrated Fraud Probability</div>
+                <div class="metric-value">{ml_prob*100:.1f}%</div>
+                <span style="color:#94a3b8;">Locked Threshold: {predictor.optimal_threshold:.4f}</span>
             </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("#### Risk Component Score Contribution")
+        # Show component weights from engine config
+        engine_cfg = risk_result.get("engine_config", {})
+        weight_label = f"({engine_cfg.get('w_ml', 0.6)*100:.0f}% ML, {engine_cfg.get('w_anomaly', 0.2)*100:.0f}% Anomaly, {engine_cfg.get('w_rules', 0.2)*100:.0f}% Rules)"
+        anomaly_status = "ACTIVE" if risk_result['components'].get('anomaly_model_active', False) else "BASELINE"
+        
+        st.markdown(f"#### Risk Component Score Contribution {weight_label}")
         comp_df = pd.DataFrame([
-            {"Component": "Supervised XGBoost ML (60% wt)", "Points": risk_result['components']['ml_contribution']},
-            {"Component": "Normalized Isolation Forest Anomaly (20% wt)", "Points": risk_result['components']['anomaly_contribution']},
-            {"Component": "Business Rules Engine (20% wt)", "Points": risk_result['components']['rule_contribution']}
+            {"Component": f"Calibrated XGBoost ML", "Points": risk_result['components']['ml_contribution']},
+            {"Component": f"Isolation Forest Anomaly [{anomaly_status}]", "Points": risk_result['components']['anomaly_contribution']},
+            {"Component": "Business Rules Engine", "Points": risk_result['components']['rule_contribution']}
         ])
         fig_comp = px.bar(comp_df, x="Component", y="Points", color="Component", title="Contribution to 0-100 Composite Risk Score")
         fig_comp.update_layout(template="plotly_dark", height=300, showlegend=False)
@@ -269,68 +322,97 @@ elif nav_option == "Live Transaction Checker":
 # TAB 3: FRAUD INVESTIGATION QUEUE
 elif nav_option == "Fraud Investigation Queue":
     st.title("Analyst Fraud Investigation Queue")
-    st.markdown("Real-time decision queue for fraud analysts to review flagged transactions and update case statuses.")
+    st.markdown("Decision queue connected to the **SQLite Warehouse (`data/processed/fraud_intelligence.db`)**.")
 
-    queue_data = [
-        {"Case_ID": "CASE_92810", "Transaction_ID": "TX92831", "Amount_INR": 84500.0, "Risk_Score": 96.4, "Tier": "CRITICAL", "Recommended": "BLOCK", "Status": "PENDING", "Beneficiary": "C102938"},
-        {"Case_ID": "CASE_92811", "Transaction_ID": "TX92832", "Amount_INR": 52100.0, "Risk_Score": 88.2, "Tier": "CRITICAL", "Recommended": "BLOCK", "Status": "PENDING", "Beneficiary": "C938201"},
-        {"Case_ID": "CASE_92812", "Transaction_ID": "TX92833", "Amount_INR": 23500.0, "Risk_Score": 68.5, "Tier": "HIGH", "Recommended": "REVIEW", "Status": "UNDER_REVIEW", "Beneficiary": "C849201"},
-        {"Case_ID": "CASE_92813", "Transaction_ID": "TX92834", "Amount_INR": 73200.0, "Risk_Score": 91.0, "Tier": "CRITICAL", "Recommended": "BLOCK", "Status": "CONFIRMED_FRAUD", "Beneficiary": "C192039"},
-        {"Case_ID": "CASE_92814", "Transaction_ID": "TX92835", "Amount_INR": 1850.0, "Risk_Score": 24.1, "Tier": "LOW", "Recommended": "ALLOW", "Status": "FALSE_POSITIVE", "Beneficiary": "M281920"}
-    ]
-    df_queue = pd.DataFrame(queue_data)
-
+    # Fetch live queue from SQLite DB
+    df_queue = db_mgr.get_investigation_queue()
     st.dataframe(df_queue, use_container_width=True)
 
     st.subheader("Take Action on Case")
     qc1, qc2, qc3 = st.columns(3)
+    case_list = df_queue["case_id"].tolist() if not df_queue.empty else ["CASE_92810"]
     with qc1:
-        sel_case = st.selectbox("Select Case ID", df_queue["Case_ID"].tolist())
+        sel_case = st.selectbox("Select Case ID", case_list)
     with qc2:
         new_status = st.selectbox("Update Case Decision", ["CONFIRMED_FRAUD", "FALSE_POSITIVE", "UNDER_REVIEW", "ALLOW"])
     with qc3:
         analyst_id = st.text_input("Analyst Name / ID", value="Analyst_042")
 
-    notes = st.text_area("Analyst Investigation Notes", value="Verified customer location diff and unexpected midnight transfer pattern. Confirming block action.")
+    notes = st.text_area("Analyst Investigation Notes", value="")
 
     if st.button("Submit Case Decision"):
-        st.success(f"Case {sel_case} successfully updated to '{new_status}' by {analyst_id}.")
+        db_mgr.update_case_decision(sel_case, new_status, analyst_id, notes)
+        st.success(f"Case {sel_case} successfully updated to '{new_status}' in SQLite Database by {analyst_id}.")
 
 # TAB 4: MODEL AND RISK ANALYTICS
 elif nav_option == "Model and Risk Analytics":
     st.title("Model Evaluation and Cost-Sensitive Risk Analytics")
-    st.markdown("Comprehensive performance benchmarks, Optuna hyperparameter results, and financial loss curves.")
+    st.markdown("Performance benchmarks, calibration metrics, and **actual validation threshold-cost curves** loaded from pipeline artifacts.")
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Optuna PR-AUC", "0.9515", "Top Benchmark")
-    col2.metric("ROC-AUC Score", "0.9964", "Near Perfect")
-    col3.metric("Test Recall @ t=0.17", "100.0 %", "31% Precision")
-    col4.metric("Operating Threshold", "0.1700", "Cost-Optimized")
+    col1.metric("PR-AUC (Test)", f"{pr_auc_val:.4f}")
+    col2.metric("ROC-AUC (Test)", f"{roc_auc_val:.4f}")
+    col3.metric("Recall @ Locked Thresh", f"{recall_val*100:.1f}%", f"{precision_val*100:.1f}% Precision")
+    col4.metric("Locked Threshold", f"{opt_thresh:.4f}", "Validation Locked")
 
     c1, c2 = st.columns(2)
     with c1:
-        st.subheader("Precision-Recall Curve (Optuna XGBoost)")
-        recalls = np.linspace(0.0, 1.0, 50)
-        precisions = np.array([1.0 if r < 0.90 else max(0.95 - (r-0.90)*4.5, 0.31) for r in recalls])
-        df_pr = pd.DataFrame({"Recall": recalls, "Precision": precisions})
-        fig_pr = px.line(df_pr, x="Recall", y="Precision", title="Precision-Recall Curve (PR-AUC = 0.9515)", color_discrete_sequence=["#6366f1"])
-        fig_pr.update_layout(template="plotly_dark", height=380)
-        st.plotly_chart(fig_pr, use_container_width=True)
+        st.subheader("Precision-Recall Curve (from Threshold Table)")
+        if not df_thresh.empty and "recall" in df_thresh.columns and "precision" in df_thresh.columns:
+            fig_pr = px.line(
+                df_thresh.sort_values("recall"), x="recall", y="precision", 
+                title=f"Precision-Recall Curve (PR-AUC = {pr_auc_val:.4f})", 
+                color_discrete_sequence=["#6366f1"]
+            )
+            fig_pr.update_layout(template="plotly_dark", height=380)
+            st.plotly_chart(fig_pr, use_container_width=True)
+        else:
+            st.warning("Threshold cost table not found. Run `python src/train.py` to generate.")
 
     with c2:
         st.subheader("Expected Financial Loss vs Decision Threshold")
-        thresholds = np.linspace(0.01, 0.90, 45)
-        losses = [82800 + (t - 0.17)**2 * 4500000 for t in thresholds]
-        df_loss = pd.DataFrame({"Threshold": thresholds, "Expected_Loss_INR": losses})
-        fig_loss = px.line(df_loss, x="Threshold", y="Expected_Loss_INR", title="Optimal Financial Threshold Selection (Min Loss at 0.17)", color_discrete_sequence=["#22c55e"])
-        fig_loss.add_vline(x=0.17, line_dash="dash", line_color="#ef4444", annotation_text="Optimal 0.17")
-        fig_loss.update_layout(template="plotly_dark", height=380)
-        st.plotly_chart(fig_loss, use_container_width=True)
+        if not df_thresh.empty and "threshold" in df_thresh.columns and "total_financial_loss_inr" in df_thresh.columns:
+            fig_loss = px.line(
+                df_thresh, x="threshold", y="total_financial_loss_inr", 
+                title=f"Validation Threshold Selection (Min Loss at {opt_thresh:.2f})", 
+                color_discrete_sequence=["#22c55e"]
+            )
+            fig_loss.add_vline(x=opt_thresh, line_dash="dash", line_color="#ef4444", annotation_text=f"Locked {opt_thresh:.2f}")
+            fig_loss.update_layout(template="plotly_dark", height=380)
+            st.plotly_chart(fig_loss, use_container_width=True)
+        else:
+            st.warning("Threshold cost table not found. Run `python src/train.py` to generate.")
+
+    # Model Comparison Table
+    st.subheader("Model Comparison (from Pipeline Artifacts)")
+    baseline_comp = meta.get("baseline_comparison", {})
+    if baseline_comp:
+        comp_rows = []
+        for model_name, metrics in baseline_comp.items():
+            comp_rows.append({
+                "Model": model_name.replace("_", " "),
+                "PR-AUC": metrics.get("pr_auc", 0),
+                "ROC-AUC": metrics.get("roc_auc", 0),
+                "Precision": metrics.get("precision", 0),
+                "Recall": metrics.get("recall", 0),
+                "F1": metrics.get("f1_score", 0),
+                "Total Loss (INR)": f"₹{metrics.get('total_financial_loss_inr', 0):,.0f}"
+            })
+        st.dataframe(pd.DataFrame(comp_rows), use_container_width=True, hide_index=True)
+
+    # Calibration metrics
+    cal_info = meta.get("calibration", {})
+    if cal_info:
+        st.subheader("Probability Calibration")
+        cal_c1, cal_c2, cal_c3 = st.columns(3)
+        cal_c1.metric("Calibration Method", cal_info.get("method", "N/A"))
+        cal_c2.metric("Brier Score", f"{cal_info.get('brier_score', 0):.6f}")
+        cal_c3.metric("Expected Calibration Error", f"{cal_info.get('expected_calibration_error', 0):.6f}")
 
 # TAB 5: SYNTHETIC UPI AND GRAPH ANALYTICS
 elif nav_option == "Synthetic UPI and Graph Analytics":
     st.title("Synthetic Indian UPI Layer and Graph Fraud Analytics")
-    st.markdown("Network graph visualization for money mule rings, circular payment chains, and synthetic UPI app metadata.")
+    st.markdown("Network MultiDiGraph visualization for money mule rings, circular payment chains, and synthetic UPI app metadata.")
 
     upi_path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "synthetic_upi_transactions.csv")
     if not os.path.exists(upi_path):
@@ -352,7 +434,7 @@ elif nav_option == "Synthetic UPI and Graph Analytics":
         fig_cat.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig_cat, use_container_width=True)
 
-    st.subheader("Money Mule Ring Network Centrality Analysis")
+    st.subheader("Money Mule Ring MultiDiGraph Network Centrality Analysis")
     analyzer = FraudGraphAnalyzer()
     analyzer.build_graph_from_dataframe(df_upi.iloc[:1500], orig_col='customer_id', dest_col='beneficiary_id', amount_col='amount_inr', fraud_col='is_fraud')
     df_metrics = analyzer.compute_network_metrics()

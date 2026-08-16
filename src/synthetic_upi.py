@@ -89,15 +89,19 @@ def generate_synthetic_upi_dataset(num_records: int = 25000, fraud_rate: float =
 
     start_date = datetime(2026, 8, 1, 0, 0, 0)
     
-    # Pre-assign personas to a pool of customers
+    # Scale suspicious/mule customer allocation based on requested fraud_rate
+    # Default ~2% fraud rate maps to 2% suspicious, 1% mule
+    suspicious_prob = max(min(fraud_rate * 1.0, 0.15), 0.005)
+    mule_prob = max(min(fraud_rate * 0.5, 0.08), 0.005)
+    
     num_customers = max(num_records // 6, 500)
     customer_ids = [f"CUST_{1000 + i}" for i in range(num_customers)]
     customer_personas = {}
     for cid in customer_ids:
         roll = random.random()
-        if roll < 0.01:
+        if roll < mule_prob:
             customer_personas[cid] = "mule"
-        elif roll < 0.03:
+        elif roll < (mule_prob + suspicious_prob):
             customer_personas[cid] = "suspicious"
         else:
             customer_personas[cid] = "normal"

@@ -5,6 +5,8 @@ __pycache__/
 
 # Pytest
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Large raw PaySim CSV dataset (>100MB limit for GitHub)
 data/PS_*.csv
@@ -22,3 +24,28 @@ data/*.csv
 venv/
 env/
 .venv/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Environment variables
+.env
+.env.*
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# MLflow
+mlruns/
+
+# SQLite databases
+*.db
+*.sqlite
+data/processed/*.db
+

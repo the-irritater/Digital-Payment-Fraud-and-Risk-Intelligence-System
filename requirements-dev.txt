@@ -1,0 +1,6 @@
+# Development & Testing Dependencies
+pytest>=8.0.0,<9.0.0
+pytest-cov>=4.0.0,<6.0.0
+flake8>=7.0.0,<8.0.0
+black>=24.0.0,<25.0.0
+coverage>=7.0.0,<8.0.0

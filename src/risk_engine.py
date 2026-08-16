@@ -5,37 +5,97 @@ and dynamic Business Rules to generate a composite Risk Score (0-100),
 Risk Tier, and Decision Action (ALLOW, REVIEW, BLOCK).
 
 NOTE: The Isolation Forest output is a normalized anomaly score, NOT a
-calibrated probability. The XGBoost output is a sigmoid probability but
-is not formally calibrated against a validation set. The composite score
-is a weighted heuristic — not a statistical probability.
+calibrated probability. The XGBoost output is a calibrated probability
+via Platt scaling. The composite score is a weighted heuristic — not a
+statistical probability.
 """
 from sklearn.utils.validation import check_is_fitted
 
+import os
+import json
+import joblib
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List, Tuple
 from sklearn.ensemble import IsolationForest
 
-class RiskEngine:
-    def __init__(self, w_ml: float = 0.60, w_anomaly: float = 0.20, w_rules: float = 0.20):
-        self.w_ml = w_ml
-        self.w_anomaly = w_anomaly
-        self.w_rules = w_rules
-        self.iso_forest = None
-        self._init_anomaly_model()
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+ISO_FOREST_PATH = os.path.join(MODEL_DIR, "isolation_forest.pkl")
+META_PATH = os.path.join(MODEL_DIR, "model_metadata.json")
 
-    def _init_anomaly_model(self):
-        """Initialize unsupervised Isolation Forest anomaly detector."""
+class RiskEngine:
+    def __init__(self, w_ml: float = None, w_anomaly: float = None, w_rules: float = None):
+        """
+        Initialize Risk Engine. If weights are not provided, attempts to load
+        optimized weights from model_metadata.json. Falls back to 60/20/20.
+        """
+        self.iso_forest = None
+        self._iso_forest_active = False
+        
+        # Load optimized weights from metadata if not explicitly provided
+        default_weights = self._load_optimized_weights()
+        self.w_ml = w_ml if w_ml is not None else default_weights.get("w_ml", 0.60)
+        self.w_anomaly = w_anomaly if w_anomaly is not None else default_weights.get("w_anomaly", 0.20)
+        self.w_rules = w_rules if w_rules is not None else default_weights.get("w_rules", 0.20)
+        
+        self._validate_weights()
+        self._load_anomaly_model()
+
+    def _load_optimized_weights(self) -> Dict[str, float]:
+        """Load optimized weights from model metadata if available."""
+        if os.path.exists(META_PATH):
+            try:
+                with open(META_PATH, 'r') as f:
+                    meta = json.load(f)
+                return meta.get("risk_engine_weights", {})
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return {}
+
+    def _validate_weights(self):
+        """Validate that component weights sum to 1.0."""
+        total = self.w_ml + self.w_anomaly + self.w_rules
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(
+                f"Risk engine weights must sum to 1.0, got {total:.4f} "
+                f"(ml={self.w_ml}, anomaly={self.w_anomaly}, rules={self.w_rules})"
+            )
+
+    def _load_anomaly_model(self):
+        """Load pre-trained Isolation Forest from disk."""
+        if os.path.exists(ISO_FOREST_PATH):
+            try:
+                self.iso_forest = joblib.load(ISO_FOREST_PATH)
+                check_is_fitted(self.iso_forest)
+                self._iso_forest_active = True
+                print(f"[RiskEngine] Isolation Forest loaded from {ISO_FOREST_PATH}")
+            except Exception as e:
+                print(f"[RiskEngine] Warning: Could not load Isolation Forest: {e}")
+                self._init_fallback_anomaly_model()
+        else:
+            print(f"[RiskEngine] Isolation Forest not found at {ISO_FOREST_PATH}. "
+                  f"Anomaly scores will use unfitted baseline (0.20).")
+            self._init_fallback_anomaly_model()
+
+    def _init_fallback_anomaly_model(self):
+        """Initialize unfitted Isolation Forest as fallback."""
         self.iso_forest = IsolationForest(
             n_estimators=100, 
             contamination=0.01, 
             random_state=42
         )
+        self._iso_forest_active = False
 
     def fit_anomaly_detector(self, X: pd.DataFrame):
         """Fit Isolation Forest on historical feature matrix."""
         print("[RiskEngine] Fitting Isolation Forest anomaly detector...")
         self.iso_forest.fit(X.fillna(0))
+        self._iso_forest_active = True
+
+    @property
+    def is_anomaly_active(self) -> bool:
+        """Whether the Isolation Forest is fitted and producing real scores."""
+        return self._iso_forest_active
 
     def compute_anomaly_score(self, feature_row: pd.Series) -> float:
         """
@@ -44,22 +104,24 @@ class RiskEngine:
         This is NOT a calibrated probability. The Isolation Forest decision_function
         returns raw scores roughly in [-0.5, 0.5]. We invert and clip to [0, 1]
         so that higher values indicate greater anomalousness.
+        
+        Returns 0.20 baseline if the model is not fitted.
         """
-        if self.iso_forest is None:
+        if not self._iso_forest_active:
             return 0.20
+        
         try:
-            check_is_fitted(self.iso_forest)
+            if hasattr(self.iso_forest, "feature_names_in_"):
+                full_row = {col: float(feature_row.get(col, 0.0)) for col in self.iso_forest.feature_names_in_}
+                df_row = pd.DataFrame([full_row])
+            else:
+                df_row = pd.DataFrame([feature_row.fillna(0)])
+            raw_score = self.iso_forest.decision_function(df_row)[0]
+            # Invert & scale: lower decision_function → more anomalous → higher score
+            norm_score = float(np.clip(1.0 - (raw_score + 0.5), 0.0, 1.0))
+            return round(norm_score, 4)
         except Exception:
             return 0.20
-        if hasattr(self.iso_forest, "feature_names_in_"):
-            full_row = {col: float(feature_row.get(col, 0.0)) for col in self.iso_forest.feature_names_in_}
-            df_row = pd.DataFrame([full_row])
-        else:
-            df_row = pd.DataFrame([feature_row.fillna(0)])
-        raw_score = self.iso_forest.decision_function(df_row)[0]
-        # Invert & scale: lower decision_function → more anomalous → higher score
-        norm_score = float(np.clip(1.0 - (raw_score + 0.5), 0.0, 1.0))
-        return round(norm_score, 4)
 
     def evaluate_business_rules(self, tx: Dict[str, Any], feature_row: pd.Series) -> Tuple[float, List[Dict[str, str]]]:
         """
@@ -137,10 +199,10 @@ class RiskEngine:
         Synthesize ML probability, normalized anomaly score, and rule triggers
         into a composite Risk Score (0-100).
         
-        Composite Score = (ml_prob * 100 * 0.60) + (anomaly_score * 100 * 0.20) + (rule_score * 0.20)
+        Composite Score = (ml_prob * 100 * w_ml) + (anomaly_score * 100 * w_anomaly) + (rule_score * w_rules)
         
         All three components are scaled to 0-100 before weighting:
-            - ml_prob: XGBoost sigmoid output (0-1) → scaled to 0-100
+            - ml_prob: XGBoost calibrated output (0-1) → scaled to 0-100
             - anomaly_score: Normalized IF score (0-1) → scaled to 0-100
             - rule_score: Already on 0-100 scale
         """
@@ -183,10 +245,16 @@ class RiskEngine:
                 "ml_contribution": round(ml_component, 1),
                 "normalized_anomaly_score": round(anomaly_score, 4),
                 "anomaly_contribution": round(anomaly_component, 1),
+                "anomaly_model_active": self._iso_forest_active,
                 "rule_score": round(rule_score, 1),
                 "rule_contribution": round(rules_component, 1)
             },
-            "triggered_rules": triggered_rules
+            "triggered_rules": triggered_rules,
+            "engine_config": {
+                "w_ml": self.w_ml,
+                "w_anomaly": self.w_anomaly,
+                "w_rules": self.w_rules
+            }
         }
 
 if __name__ == "__main__":
@@ -206,5 +274,5 @@ if __name__ == "__main__":
     }
     result = engine.calculate_risk(ml_prob=0.945, feature_row=dummy_feature_row, tx_dict=dummy_tx)
     print("Risk Engine Evaluation Result:")
-    import json
-    print(json.dumps(result, indent=2))
+    import json as _json
+    print(_json.dumps(result, indent=2))

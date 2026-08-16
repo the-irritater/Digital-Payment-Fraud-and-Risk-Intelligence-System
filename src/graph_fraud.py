@@ -1,6 +1,6 @@
 """
 Graph-Based Fraud Risk Analysis Module for Digital Payment Fraud Intelligence System.
-Uses NetworkX to build transaction flow graphs, compute network centrality metrics,
+Uses NetworkX MultiDiGraph to build multi-edge transaction flow graphs, compute network centrality metrics,
 and identify structural patterns (high in-degree hubs, circular chains) that may be
 associated with suspicious behavior such as money mule networks.
 
@@ -17,7 +17,12 @@ from typing import Dict, Any, List, Tuple
 
 class FraudGraphAnalyzer:
     def __init__(self):
-        self.graph = nx.DiGraph()
+        self.graph = nx.MultiDiGraph()
+
+    @property
+    def G(self) -> nx.MultiDiGraph:
+        """Alias property for backward compatibility and test access."""
+        return self.graph
 
     def build_graph_from_dataframe(
         self, 
@@ -27,8 +32,8 @@ class FraudGraphAnalyzer:
         amount_col: str = 'amount',
         fraud_col: str = 'isFraud'
     ):
-        """Construct directed multi-attribute transaction graph from DataFrame."""
-        print(f"[FraudGraphAnalyzer] Constructing transaction network graph from {len(df):,} transactions...")
+        """Construct directed multi-edge transaction graph from DataFrame."""
+        print(f"[FraudGraphAnalyzer] Constructing MultiDiGraph from {len(df):,} transactions...")
         self.graph.clear()
         
         for idx, row in df.iterrows():
@@ -36,6 +41,7 @@ class FraudGraphAnalyzer:
             v = str(row[dest_col])
             amt = float(row[amount_col])
             is_fraud = int(row.get(fraud_col, 0))
+            step = float(row.get('step', 1))
             
             # Add nodes
             if not self.graph.has_node(u):
@@ -49,19 +55,27 @@ class FraudGraphAnalyzer:
             self.graph.nodes[v]['total_received'] += amt
             self.graph.nodes[v]['tx_count'] += 1
             
-            # Add directed edge
-            self.graph.add_edge(u, v, amount=amt, is_fraud=is_fraud)
+            # Add directed multi-edge (preserves multiple transfers between same u and v)
+            self.graph.add_edge(u, v, amount=amt, is_fraud=is_fraud, step=step)
             
-        print(f"[FraudGraphAnalyzer] Graph built: {self.graph.number_of_nodes():,} nodes | {self.graph.number_of_edges():,} directed edges.")
+        print(f"[FraudGraphAnalyzer] MultiDiGraph built: {self.graph.number_of_nodes():,} nodes | {self.graph.number_of_edges():,} directed transaction edges.")
 
     def compute_network_metrics(self) -> pd.DataFrame:
         """Calculate network centrality metrics to identify structurally suspicious nodes."""
         in_degree = dict(self.graph.in_degree())
         out_degree = dict(self.graph.out_degree())
         
-        # Calculate PageRank
+        # Collapse to simple DiGraph for PageRank computation
+        simple_g = nx.DiGraph()
+        for u, v, data in self.graph.edges(data=True):
+            w = data.get('amount', 1.0)
+            if simple_g.has_edge(u, v):
+                simple_g[u][v]['weight'] += w
+            else:
+                simple_g.add_edge(u, v, weight=w)
+                
         try:
-            pagerank = nx.pagerank(self.graph, alpha=0.85, max_iter=200)
+            pagerank = nx.pagerank(simple_g, weight='weight', alpha=0.85, max_iter=200)
         except Exception:
             pagerank = {n: 0.0 for n in self.graph.nodes()}
             
@@ -74,7 +88,6 @@ class FraudGraphAnalyzer:
             recv = self.graph.nodes[node].get('total_received', 0.0)
             
             # Mule risk heuristic: high in-degree + low out-degree suggests collection hub
-            # This is a structural indicator, not proof of fraudulent behavior
             mule_ratio = (in_d + 1.0) / (out_d + 1.0)
             mule_risk_score = min((mule_ratio * 10.0) + (pr * 1000.0), 100.0)
             
@@ -103,13 +116,14 @@ class FraudGraphAnalyzer:
         for comp in components:
             if len(comp) >= 3:
                 subg = self.graph.subgraph(comp)
-                fraud_edges = sum(1 for u, v, d in subg.edges(data=True) if d.get('is_fraud', 0) == 1)
+                fraud_edges = sum(1 for u, v, k, d in subg.edges(keys=True, data=True) if d.get('is_fraud', 0) == 1)
                 total_edges = subg.number_of_edges()
-                total_volume = sum(d.get('amount', 0.0) for u, v, d in subg.edges(data=True))
+                total_volume = sum(d.get('amount', 0.0) for u, v, k, d in subg.edges(keys=True, data=True))
                 
-                # Check for simple cycles (circular money laundering chains)
+                # Check for simple cycles on collapsed DiGraph
+                simple_subg = nx.DiGraph(subg)
                 try:
-                    cycles = list(nx.simple_cycles(subg))
+                    cycles = list(nx.simple_cycles(simple_subg))
                 except Exception:
                     cycles = []
                     
@@ -137,8 +151,3 @@ if __name__ == "__main__":
     df_metrics = analyzer.compute_network_metrics()
     print("\nTop 5 Potential Money Mule Accounts:")
     print(df_metrics.head())
-    
-    clusters = analyzer.detect_suspicious_subgraphs()
-    print(f"\nDiscovered {len(clusters)} Suspicious Fraud Rings/Clusters:")
-    for cl in clusters[:3]:
-        print(f"  {cl['cluster_id']}: {cl['node_count']} accounts | Volume: ₹{cl['total_volume_inr']:,} | Fraud txs: {cl['fraud_transaction_count']}")

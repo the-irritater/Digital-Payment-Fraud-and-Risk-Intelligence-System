@@ -1,6 +1,7 @@
 """
 Unit tests for Risk Engine.
-Validates risk tier classification, action directives, and score normalization.
+Validates risk tier classification, action directives, score normalization,
+weight validation, and Isolation Forest integration.
 """
 
 import sys
@@ -57,12 +58,7 @@ class TestRiskTierClassification:
 
     def test_critical_tier_blocks(self):
         """Very high ML probability + multiple rule triggers should produce CRITICAL tier."""
-        engine = RiskEngine()
-        # ml_component = 0.99 * 100 * 0.60 = 59.4
-        # anomaly_component = 0.20 * 100 * 0.20 = 4.0 (unfitted default)
-        # rule triggers: velocity(35) + new_ben_high_val(30) + night(25) + drain(20) = 110 → capped at 100
-        # rules_component = 100 * 0.20 = 20.0
-        # total = 59.4 + 4.0 + 20.0 = 83.4 → CRITICAL
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=0.99,
             feature_row=_make_feature_row(
@@ -77,7 +73,7 @@ class TestRiskTierClassification:
 
     def test_low_tier_allows(self):
         """Low ML probability with no rule triggers should produce LOW tier with ALLOW."""
-        engine = RiskEngine()
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=0.02,
             feature_row=_make_feature_row(),
@@ -88,11 +84,7 @@ class TestRiskTierClassification:
 
     def test_medium_tier_reviews(self):
         """Moderate ML probability with some rule triggers should produce MEDIUM or HIGH."""
-        engine = RiskEngine()
-        # ml_component = 0.55 * 100 * 0.60 = 33.0
-        # anomaly = 4.0 (default)
-        # rules: no triggers at amount=5000 with defaults → 0
-        # total ≈ 37.0 → MEDIUM
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=0.55,
             feature_row=_make_feature_row(),
@@ -105,7 +97,7 @@ class TestRiskScoreNormalization:
     """Verify composite score stays within [0, 100]."""
 
     def test_score_bounds_extreme_high(self):
-        engine = RiskEngine()
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=1.0,
             feature_row=_make_feature_row(
@@ -118,7 +110,7 @@ class TestRiskScoreNormalization:
         assert 0.0 <= result['risk_score'] <= 100.0
 
     def test_score_bounds_extreme_low(self):
-        engine = RiskEngine()
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=0.0,
             feature_row=_make_feature_row(),
@@ -130,8 +122,7 @@ class TestActionWording:
     """Verify action badges use correct wording (no account freeze, no OTP hardcoding)."""
 
     def test_critical_no_account_freeze(self):
-        engine = RiskEngine()
-        # Force CRITICAL score with max signals
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=0.99,
             feature_row=_make_feature_row(
@@ -147,7 +138,7 @@ class TestActionWording:
             "CRITICAL action should mention escalation or investigation"
 
     def test_medium_no_otp_hardcode(self):
-        engine = RiskEngine()
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
         result = engine.calculate_risk(
             ml_prob=0.40,
             feature_row=_make_feature_row(),
@@ -155,6 +146,43 @@ class TestActionWording:
         )
         assert "OTP" not in result['action_badge'], \
             "Action badge should not hardcode OTP as the specific auth method"
+
+class TestWeightValidation:
+    """Verify risk engine rejects invalid weights."""
+
+    def test_weights_must_sum_to_one(self):
+        with pytest.raises(ValueError, match="weights must sum to 1.0"):
+            RiskEngine(w_ml=0.50, w_anomaly=0.20, w_rules=0.10)
+
+    def test_valid_weights_accepted(self):
+        engine = RiskEngine(w_ml=0.70, w_anomaly=0.15, w_rules=0.15)
+        assert engine.w_ml == 0.70
+        assert engine.w_anomaly == 0.15
+        assert engine.w_rules == 0.15
+
+class TestEngineConfigInOutput:
+    """Verify engine configuration is included in risk results."""
+
+    def test_engine_config_present(self):
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
+        result = engine.calculate_risk(
+            ml_prob=0.50,
+            feature_row=_make_feature_row(),
+            tx_dict=_make_tx()
+        )
+        assert "engine_config" in result
+        assert result["engine_config"]["w_ml"] == 0.60
+        assert result["engine_config"]["w_anomaly"] == 0.20
+        assert result["engine_config"]["w_rules"] == 0.20
+
+    def test_anomaly_model_status_present(self):
+        engine = RiskEngine(w_ml=0.60, w_anomaly=0.20, w_rules=0.20)
+        result = engine.calculate_risk(
+            ml_prob=0.50,
+            feature_row=_make_feature_row(),
+            tx_dict=_make_tx()
+        )
+        assert "anomaly_model_active" in result["components"]
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

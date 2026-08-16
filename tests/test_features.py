@@ -11,7 +11,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from feature_engineering import build_features, get_feature_matrix, FEATURE_COLS, TARGET_COL
+from feature_engineering import build_features, get_feature_matrix, get_feature_schema, FEATURE_COLS, TARGET_COL, FEATURE_SCHEMA_VERSION
 
 def _make_sample_df():
     """Create a minimal sample dataframe for testing."""
@@ -90,6 +90,60 @@ def test_night_time_flag():
         hour = row['hour_of_day']
         expected_night = 1 if hour in [0, 1, 2, 3, 4, 5] else 0
         assert row['is_night_time'] == expected_night, f"Night flag wrong for hour {hour}"
+
+def test_temporal_leakage_prevention():
+    """
+    Changing a FUTURE transaction's amount must NOT affect feature values of EARLIER transactions.
+    This validates that all features are strictly backward-looking (causal).
+    """
+    df = _make_sample_df()
+    featured_original = build_features(df.copy())
+    
+    # Modify the LAST transaction (step=12, C100→C600, amount=80000)
+    df_modified = df.copy()
+    df_modified.loc[df_modified['step'] == 12, 'amount'] = 999999.0
+    featured_modified = build_features(df_modified)
+    
+    # All features for EARLIER transactions (steps < 12) should be identical
+    earlier_cols = FEATURE_COLS
+    for step in [1, 2, 3, 10, 11]:
+        orig_row = featured_original[featured_original['step'] == step][earlier_cols].iloc[0]
+        mod_row = featured_modified[featured_modified['step'] == step][earlier_cols].iloc[0]
+        diff = (orig_row - mod_row).abs().sum()
+        assert diff < 1e-10, f"Temporal leakage detected at step {step}: features changed when future transaction was modified"
+
+def test_feature_schema_version_exists():
+    """Feature schema version should be a non-empty string."""
+    assert isinstance(FEATURE_SCHEMA_VERSION, str)
+    assert len(FEATURE_SCHEMA_VERSION) > 0
+
+def test_get_feature_schema_structure():
+    """get_feature_schema should return a well-formed dict with all required keys."""
+    schema = get_feature_schema()
+    assert "schema_version" in schema
+    assert "feature_count" in schema
+    assert "feature_columns" in schema
+    assert "target_column" in schema
+    assert "features" in schema
+    assert schema["feature_count"] == len(FEATURE_COLS)
+    assert schema["target_column"] == TARGET_COL
+    
+    # Every feature column should have metadata
+    for col in FEATURE_COLS:
+        assert col in schema["features"], f"Missing schema entry for feature: {col}"
+        entry = schema["features"][col]
+        assert "type" in entry
+        assert "description" in entry
+        assert "leakage_risk" in entry
+
+def test_velocity_counts_are_integers():
+    """Velocity count features should produce integer-like values."""
+    df = _make_sample_df()
+    featured = build_features(df)
+    for col in ['transactions_last_1h', 'transactions_last_6h', 'transactions_last_24h']:
+        values = featured[col].values
+        assert np.all(values >= 0), f"{col} should be non-negative"
+        assert np.all(values == values.astype(int)), f"{col} should be integer counts"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
