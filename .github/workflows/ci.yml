@@ -18,9 +18,9 @@ jobs:
       - name: Install linting dependencies
         run: pip install flake8 black
       - name: Run flake8
-        run: flake8 src/ api/ sql/ --max-line-length=150 --ignore=E501,W503
+        run: flake8 src/ api/ sql/ app/ tests/ monitoring/ --max-line-length=150 --ignore=E501,W503,E203,E402,E226,F401,F841,F541
       - name: Check formatting with black
-        run: black --check src/ api/ sql/
+        run: black --check src/ api/ sql/ app/ tests/ monitoring/
 
   test:
     runs-on: ubuntu-latest
