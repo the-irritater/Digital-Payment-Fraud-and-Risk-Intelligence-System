@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  An end to end fraud intelligence platform that combines supervised machine learning, anomaly detection, behavioral analytics, explainable AI, graph analytics and rule based decisioning to identify, explain and prioritize suspicious digital payment transactions.
+  An end to end fraud intelligence platform combining supervised machine learning, anomaly detection, behavioral analytics, explainable AI, graph analytics and rule based decisioning to identify, explain and prioritize suspicious digital payment transactions.
 </p>
 
 <p align="center">
-  <a href="YOUR_STREAMLIT_URL">
+  <a href="https://digital-payment-fraud-and-risk-intelligence-system.streamlit.app/">
     <img src="https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo">
   </a>
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
@@ -22,26 +22,24 @@
 </p>
 
 <p align="center">
-  <strong>Primary Metric: PR AUC 0.9515</strong>
-  <br>
-  <strong>Temporal Test Recall: 100%</strong>
-  <br>
-  <strong>ROC AUC: 0.9964</strong>
+  <strong>PR AUC 0.9515</strong>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <strong>ROC AUC 0.9964</strong>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <strong>Recall 100%</strong>
 </p>
 
 ---
 
 ## Live Demo
 
-<p align="center">
-  <a href="YOUR_STREAMLIT_URL">
-    <img src="https://img.shields.io/badge/Open%20Live%20Fraud%20Risk%20Dashboard-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Open Live Dashboard">
-  </a>
-</p>
+### Explore the deployed fraud intelligence platform
 
-The deployed Streamlit application provides an interactive interface for exploring the fraud intelligence pipeline.
+[Open the Live Streamlit Fraud Risk Intelligence Dashboard](https://digital-payment-fraud-and-risk-intelligence-system.streamlit.app/?utm_source=chatgpt.com)
 
-The dashboard is designed around the complete risk decision workflow:
+The live application provides an interactive interface for exploring transaction level fraud predictions, hybrid risk scores, anomaly signals, business rules and explainable AI outputs.
+
+### Dashboard Workflow
 
 ```text
 Transaction
@@ -50,33 +48,23 @@ Transaction
 Fraud Prediction
      │
      ▼
-Risk Score
+Hybrid Risk Engine
      │
      ▼
-Risk Tier
+Risk Score
      │
      ├── ML Probability
-     ├── Anomaly Signal
+     ├── Anomaly Score
      ├── Business Rules
-     └── Explainability
+     └── SHAP Explanation
              │
              ▼
-      Operational Decision
+      Risk Classification
+             │
+       ┌─────┼─────┐
+       ▼     ▼     ▼
+     ALLOW REVIEW BLOCK
 ```
-
-### Dashboard Capabilities
-
-| Capability          | Description                              |
-| :------------------ | :--------------------------------------- |
-| Transaction Scoring | Evaluate individual payment transactions |
-| Fraud Probability   | View supervised model probability        |
-| Anomaly Detection   | Identify unusual behavioral patterns     |
-| Risk Score          | Composite score from 0 to 100            |
-| Risk Tier           | LOW, MEDIUM, HIGH and CRITICAL           |
-| Decisioning         | ALLOW, REVIEW or BLOCK                   |
-| SHAP Explainability | Understand important model drivers       |
-| Graph Intelligence  | Explore structural transaction risk      |
-| Behavioral Analysis | Identify unusual transaction behavior    |
 
 ---
 
@@ -84,17 +72,17 @@ Risk Tier
 
 Digital payment fraud is not simply a binary classification problem.
 
-A practical fraud intelligence platform must answer three questions:
+A practical fraud intelligence platform needs to answer three questions:
 
 ```text
-1. Is the transaction suspicious?
+1. Is this transaction suspicious?
 
-2. Why is the transaction suspicious?
+2. Why is this transaction suspicious?
 
 3. What action should be taken?
 ```
 
-This project addresses these questions through a hybrid risk intelligence architecture combining:
+This project addresses these questions through a hybrid fraud intelligence architecture combining:
 
 ```text
 Supervised Machine Learning
@@ -112,7 +100,7 @@ Graph Analytics
 Cost Sensitive Decisioning
 ```
 
-The result is an end to end fraud risk platform designed to move beyond model accuracy and support operational fraud investigation.
+The result is an end to end fraud risk intelligence platform designed to move beyond model accuracy and provide actionable risk intelligence.
 
 ---
 
@@ -132,7 +120,7 @@ The final XGBoost model was evaluated using a strict temporal test set.
 
 At the selected operating threshold of 0.17 the model detected all observed fraud cases in the temporal test set.
 
-The threshold intentionally prioritizes recall because missing fraudulent transactions can have a significantly higher operational cost than investigating legitimate transactions.
+The threshold intentionally prioritizes recall because missing fraudulent transactions can have a substantially higher operational cost than investigating legitimate transactions.
 
 ---
 
@@ -149,8 +137,8 @@ The threshold intentionally prioritizes recall because missing fraudulent transa
                               │
                               ▼
                  ┌──────────────────────────┐
-                 │    FEATURE ENGINEERING   │
-                 │     CAUSAL FEATURES      │
+                 │    CAUSAL FEATURE        │
+                 │       ENGINEERING        │
                  └────────────┬─────────────┘
                               │
              ┌────────────────┼────────────────┐
@@ -184,7 +172,7 @@ The threshold intentionally prioritizes recall because missing fraudulent transa
                  ┌──────────────────────────┐
                  │ SHAP EXPLANATIONS        │
                  │ GRAPH INTELLIGENCE       │
-                 │ ANALYST DASHBOARD        │
+                 │ STREAMLIT DASHBOARD      │
                  └──────────────────────────┘
 ```
 
@@ -241,31 +229,31 @@ Streamlit Risk Dashboard
 
 The project deliberately separates transaction level modelling data from Indian payment ecosystem context.
 
-| Data Source                   | Purpose                                               | Nature                            |
-| :---------------------------- | :---------------------------------------------------- | :-------------------------------- |
-| PaySim                        | Transaction level fraud model training and evaluation | Synthetic mobile money simulation |
-| RBI Payment System Indicators | Indian payment ecosystem context                      | Official aggregate statistics     |
-| Synthetic UPI Generator       | Indian UPI like behavioral simulation                 | Explicitly synthetic              |
+| Data Source                   | Purpose                               | Nature                            |
+| :---------------------------- | :------------------------------------ | :-------------------------------- |
+| PaySim                        | Fraud model training and evaluation   | Synthetic mobile money simulation |
+| RBI Payment System Indicators | Indian payment ecosystem context      | Official aggregate statistics     |
+| Synthetic UPI Generator       | Indian UPI like behavioral simulation | Explicitly synthetic              |
 
-## PaySim Dataset
+## PaySim
 
 The transaction level fraud model is trained and evaluated using the PaySim synthetic financial transaction dataset.
 
-The dataset contains approximately 6.3 million simulated transactions and provides transaction level information for fraud classification and behavioral analysis.
+The dataset contains approximately 6.3 million simulated transactions and provides transaction level information suitable for fraud classification and behavioral analysis.
 
-PaySim is synthetic and therefore model performance on PaySim should not be interpreted as equivalent to performance on real banking transactions.
+PaySim is synthetic. Therefore model performance on PaySim should not be interpreted as equivalent to performance on real banking transactions.
 
 ## RBI Payment System Indicators
 
-RBI payment system statistics are used to provide macro level context around India's digital payment ecosystem.
+RBI payment system statistics are used strictly as macro level context for India's digital payment ecosystem.
 
-RBI aggregate statistics are not used as transaction level labels for the fraud classification model.
+RBI aggregate statistics are not used as transaction level fraud labels for the machine learning model.
 
 ## Synthetic UPI Generator
 
 The project includes a synthetic UPI transaction generator designed to simulate Indian payment behavior.
 
-The generated data is explicitly synthetic and is not presented as real banking or customer data.
+The generated transactions are explicitly synthetic and are not presented as real banking or customer data.
 
 ---
 
@@ -300,13 +288,13 @@ Behavioral Changes
 Unusual Amounts, Devices and Beneficiaries
 ```
 
-RBI payment system statistics are used only as ecosystem context.
+RBI payment system statistics are used only for ecosystem context.
 
 ---
 
 # Machine Learning Models
 
-Three classification approaches were benchmarked.
+Three supervised classification approaches were benchmarked.
 
 ```text
 Logistic Regression
@@ -333,15 +321,23 @@ XGBoost was selected as the primary supervised fraud model.
 
 ---
 
-# Why PR AUC?
+# Why PR AUC
 
 Fraud detection is typically an imbalanced classification problem.
 
-Accuracy can therefore be misleading.
+Accuracy can therefore provide a misleading view of model performance.
 
-The project uses **Precision Recall AUC** as the primary model selection metric because it provides a more informative evaluation of fraud detection performance under class imbalance.
+The project uses **Precision Recall AUC** as the primary evaluation metric because it provides a more informative assessment of fraud detection under class imbalance.
 
-The model was also evaluated using ROC AUC, precision, recall and F1 score.
+The model is also evaluated using:
+
+```text
+PR AUC
+ROC AUC
+Precision
+Recall
+F1 Score
+```
 
 ---
 
@@ -365,7 +361,7 @@ Later Transactions
 Temporal Test Data
 ```
 
-This approach better represents the direction of real transaction data and helps reduce the risk of unrealistic evaluation caused by random temporal mixing.
+This better represents the direction of real transaction data and reduces the risk of unrealistic evaluation caused by randomly mixing historical and future observations.
 
 ---
 
@@ -411,7 +407,7 @@ The current investigation cost assumption is:
 False Positive Investigation Cost = 200
 ```
 
-The threshold analysis allows the system to evaluate the operational tradeoff between:
+The threshold analysis evaluates the tradeoff between:
 
 ```text
 Higher Recall
@@ -423,7 +419,7 @@ Investigation Cost
 Missed Fraud Loss
 ```
 
-The complete analysis is available in:
+The complete threshold analysis is available in:
 
 ```text
 reports/threshold_cost_table.csv
@@ -433,7 +429,7 @@ reports/threshold_cost_table.csv
 
 # Hybrid Risk Engine
 
-The fraud probability is combined with anomaly detection and deterministic business rules.
+The platform combines three risk signals into a composite risk score.
 
 ```text
 Risk Score
@@ -451,7 +447,7 @@ Rule Score × 0.20
 | Isolation Forest    | 0 to 100 |   20%  | Unsupervised anomaly signal   |
 | Business Rules      | 0 to 100 |   20%  | Deterministic risk indicators |
 
-This architecture allows multiple sources of risk evidence to contribute to the final decision.
+This allows multiple sources of risk evidence to contribute to the final decision.
 
 ---
 
@@ -470,9 +466,11 @@ The thresholds are configurable and should be calibrated using representative pr
 
 # Explainable AI
 
-A fraud prediction without an explanation can be difficult for analysts to act upon.
+Fraud detection requires more than a prediction.
 
-The project uses **SHAP** to identify the features contributing to individual model predictions.
+Analysts need to understand why a transaction received a high risk score.
+
+The platform uses **SHAP** to identify features contributing to individual model predictions.
 
 ```text
 Transaction
@@ -493,7 +491,7 @@ SHAP Analysis
        Analyst Explanation
 ```
 
-SHAP explanations provide transparency into model behavior and help analysts understand why a transaction received a particular fraud probability.
+SHAP explanations improve transparency and help analysts understand the drivers behind individual predictions.
 
 ---
 
@@ -501,9 +499,7 @@ SHAP explanations provide transparency into model behavior and help analysts und
 
 The platform uses **Isolation Forest** as an additional unsupervised risk signal.
 
-The objective is to identify transactions with unusual behavioral characteristics that may not be fully represented by supervised fraud labels.
-
-The architecture therefore combines:
+The objective is to identify unusual behavioral patterns that may not be fully represented by supervised fraud labels.
 
 ```text
 Supervised Fraud Signal
@@ -520,7 +516,7 @@ Hybrid Risk Assessment
 
 # Behavioral Risk Analytics
 
-The platform incorporates behavioral patterns such as:
+The platform incorporates behavioral indicators including:
 
 ```text
 Transaction Velocity
@@ -538,7 +534,7 @@ Beneficiary Churn
 Behavioral Risk
 ```
 
-These signals are intended to provide additional context around suspicious transaction activity.
+These features provide additional context around suspicious transaction activity.
 
 ---
 
@@ -563,8 +559,6 @@ It does not represent real customer behavior or real banking transaction data.
 Fraud can involve networks of accounts rather than isolated transactions.
 
 The project uses **NetworkX** to construct transaction relationship graphs.
-
-The graph analysis includes:
 
 | Graph Feature        | Purpose                                 |
 | :------------------- | :-------------------------------------- |
@@ -594,9 +588,33 @@ Graph features are treated as risk indicators and do not establish that an accou
 
 ---
 
+# Streamlit Risk Intelligence Dashboard
+
+The project includes a deployed Streamlit application for interactive fraud risk analysis.
+
+### Live Application
+
+[Digital Payment Fraud and Risk Intelligence Dashboard](https://digital-payment-fraud-and-risk-intelligence-system.streamlit.app/?utm_source=chatgpt.com)
+
+The dashboard provides:
+
+| Dashboard Feature    | Purpose                                 |
+| :------------------- | :-------------------------------------- |
+| Transaction Input    | Evaluate transaction level risk         |
+| Fraud Probability    | Display supervised model probability    |
+| Anomaly Score        | Display unsupervised risk signal        |
+| Rule Score           | Display deterministic rule contribution |
+| Composite Risk Score | Combine multiple risk signals           |
+| Risk Tier            | Classify transaction risk               |
+| Decision             | Recommend ALLOW, REVIEW or BLOCK        |
+| SHAP Analysis        | Explain model predictions               |
+| Graph Analysis       | Explore structural risk indicators      |
+
+---
+
 # SQL Analytics
 
-The project includes a SQL layer for structured transaction and fraud analysis.
+The project includes a SQL layer for structured fraud analysis.
 
 ```text
 sql/
@@ -604,7 +622,7 @@ sql/
 └── fraud_analysis.sql
 ```
 
-The SQL layer provides a foundation for analytical workflows around:
+The SQL layer supports analytical workflows involving:
 
 ```text
 Transaction Analysis
@@ -616,38 +634,9 @@ Account Activity
 
 ---
 
-# Streamlit Application
-
-The project includes an interactive Streamlit dashboard for analyst oriented fraud investigation.
-
-```text
-Transaction Input
-       │
-       ▼
-Model Prediction
-       │
-       ▼
-Hybrid Risk Engine
-       │
-       ▼
-Risk Score
-       │
-       ├── Fraud Probability
-       ├── Anomaly Score
-       ├── Rule Score
-       └── SHAP Explanation
-               │
-               ▼
-        Decision Recommendation
-```
-
-The application is designed to make the underlying analytical pipeline accessible through an interactive interface.
-
----
-
 # Model Governance
 
-The project includes a model card documenting model provenance, evaluation methodology, intended use and known limitations.
+A dedicated model card documents model provenance, evaluation methodology, intended use and known limitations.
 
 ```text
 reports/model_card.md
@@ -656,18 +645,18 @@ reports/model_card.md
 ## Important Limitations
 
 * PaySim is synthetic
-* Synthetic UPI data is generated by the project
+* Synthetic UPI transactions are generated by the project
 * Model performance on PaySim does not guarantee equivalent real world performance
 * Risk thresholds require calibration using real operational costs
-* Graph features indicate structural risk rather than proof of fraud
+* Graph features represent structural risk rather than proof of fraud
 * RBI aggregate statistics are not used as transaction level fraud labels
-* Production deployment would require extensive validation and governance
+* Production deployment requires additional validation and governance
 
 ---
 
 # Testing
 
-Automated tests are included for important components of the platform.
+Automated tests are included for important components.
 
 ```text
 tests/
@@ -682,7 +671,7 @@ Run the complete test suite:
 pytest tests/ -v
 ```
 
-Testing focuses on:
+Testing covers:
 
 ```text
 Feature Engineering
@@ -793,7 +782,7 @@ pytest tests/ -v
 
 ---
 
-# Launch Streamlit Dashboard
+# Run the Streamlit Application Locally
 
 ```bash
 streamlit run app/streamlit_app.py
@@ -804,6 +793,10 @@ The application will be available at:
 ```text
 http://localhost:8501
 ```
+
+For the deployed application:
+
+[Open Live Streamlit Dashboard](https://digital-payment-fraud-and-risk-intelligence-system.streamlit.app/?utm_source=chatgpt.com)
 
 ---
 
@@ -849,7 +842,7 @@ Hybrid Risk Engine
 | :----------- | :------------------------------------- |
 | Python       | Core development                       |
 | Pandas       | Data processing                        |
-| NumPy        | Numerical computing                    |
+| NumPy        | Numerical computation                  |
 | Scikit Learn | Machine learning and anomaly detection |
 | XGBoost      | Fraud classification                   |
 | Optuna       | Hyperparameter optimization            |
@@ -865,7 +858,7 @@ Hybrid Risk Engine
 
 # Future Roadmap
 
-The current platform is designed as a strong research and engineering prototype.
+The current platform is designed as a research and engineering prototype.
 
 Potential production extensions include:
 
@@ -914,64 +907,63 @@ BLOCK
 
 # Why This Project Is Different
 
-Many fraud detection projects focus primarily on model accuracy.
-
-This project focuses on the complete fraud intelligence lifecycle:
+Many fraud detection projects stop at:
 
 ```text
-                 ┌──────────────────┐
-                 │     Detection    │
-                 │    XGBoost       │
-                 └────────┬─────────┘
-                          │
-                          ▼
-                 ┌──────────────────┐
-                 │    Explanation   │
-                 │      SHAP        │
-                 └────────┬─────────┘
-                          │
-                          ▼
-                 ┌──────────────────┐
-                 │  Risk Assessment │
-                 │ ML + Anomaly +   │
-                 │ Rules            │
-                 └────────┬─────────┘
-                          │
-                          ▼
-                 ┌──────────────────┐
-                 │    Decisioning   │
-                 │ Allow / Review / │
-                 │ Block            │
-                 └────────┬─────────┘
-                          │
-                          ▼
-                 ┌──────────────────┐
-                 │ Analyst Dashboard│
-                 │    Streamlit     │
-                 └──────────────────┘
+Dataset
+   ↓
+Model
+   ↓
+Accuracy
 ```
 
-The project therefore demonstrates practical application of:
+This project extends the workflow into an operational risk intelligence system:
+
+```text
+Data
+   ↓
+Feature Engineering
+   ↓
+Machine Learning
+   ↓
+Cost Optimization
+   ↓
+Explainability
+   ↓
+Anomaly Detection
+   ↓
+Graph Intelligence
+   ↓
+Risk Scoring
+   ↓
+Decision Engine
+   ↓
+Streamlit Dashboard
+   ↓
+Testing and Governance
+```
+
+The project demonstrates practical application of:
 
 ```text
 Machine Learning
-       +
+        +
 Statistical Thinking
-       +
+        +
 Fraud Analytics
-       +
+        +
 Explainable AI
-       +
+        +
 Anomaly Detection
-       +
+        +
 Graph Intelligence
-       +
+        +
 SQL Analytics
-       +
+        +
 Cost Sensitive Decisioning
-       +
+        +
 Software Testing
-       +
+        +
 Interactive Deployment
 ```
 
@@ -997,11 +989,11 @@ Risk scores should support fraud investigation and operational decision making r
 
 ### PaySim
 
-https://www.kaggle.com/datasets/ealaxi/paysim1
+[PaySim Dataset on Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1?utm_source=chatgpt.com)
 
 ### Reserve Bank of India Payment System Indicators
 
-https://www.rbi.org.in/Scripts/PSIUserView.aspx?Id=41
+[RBI Payment System Indicators](https://www.rbi.org.in/Scripts/PSIUserView.aspx?Id=41&utm_source=chatgpt.com)
 
 ---
 
@@ -1054,3 +1046,4 @@ DIGITAL PAYMENT FRAUD
 <p align="center">
   Built for fraud intelligence research and practical risk analytics.
 </p>
+
