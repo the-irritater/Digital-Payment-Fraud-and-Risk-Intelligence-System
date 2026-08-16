@@ -632,9 +632,10 @@ pytest tests/ -v
 
 ---
 
-## Model Governance & Limitations
+## Model Governance & Technical Documentation
 
-A dedicated model card is included at `reports/model_card.md`.
+- **Formal Model Card**: [reports/model_card.md](reports/model_card.md)
+- **Comprehensive System & File Explanation**: [docs/TECHNICAL_EXPLANATION.md](docs/TECHNICAL_EXPLANATION.md) — Detailed step-by-step breakdown of every file, algorithm, rationale, and implementation pattern.
 
 ### Important Limitations
 
